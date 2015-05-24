@@ -61,15 +61,17 @@ function WormWar:InitGameMode()
 	print( "Template addon is loaded." )
 	GameRules:GetGameModeEntity():SetThink( "OnThink", self, "GlobalThink", 2 )
     ListenToGameEvent('entity_killed', Dynamic_Wrap(WormWar, 'OnEntityKilled'), self)
+    ListenToGameEvent("npc_spawned", Dynamic_Wrap(WormWar, "OnNPCSpawned"), self)
+    if temp_flag==0 then
+         initplayerstats()
+         temp_flag=1
+    end
 end
 
 -- Evaluate the state of the game
 function WormWar:OnThink()
     --玩家初始化
-    if temp_flag==0 then
-         initplayerstats()
-         temp_flag=1
-    end
+
 	
 	if GameRules:State_Get() == DOTA_GAMERULES_STATE_GAME_IN_PROGRESS then
 		--print( "Template addon script is running." )
@@ -101,3 +103,44 @@ function WormWar:OnEntityKilled( keys )
 
     
 end
+
+function WormWar:OnNPCSpawned( keys )
+   local unit =  EntIndexToHScript(keys.entindex)
+   
+   if unit:IsHero() then
+   	 local playerid=unit:GetPlayerOwnerID()
+     PlayerStats[playerid]['group']={}
+     PlayerStats[playerid]['group_pointer']=1
+     PlayerStats[playerid]['group'][PlayerStats[playerid]['group_pointer']]=unit
+     GameRules:GetGameModeEntity():SetContextThink(DoUniqueString("1"), 
+        function()
+          local chaoxiang=unit:GetForwardVector()
+          --local truechaoxiang=chaoxiang:Normalized()
+          local position=unit:GetAbsOrigin()
+          unit:MoveToPosition(position+chaoxiang*500)
+
+          local aroundit=FindUnitsInRadius(DOTA_TEAM_NEUTRALS, position, nil, 
+          	                              100,
+                                  		  DOTA_UNIT_TARGET_TEAM_FRIENDLY,
+                              			  DOTA_UNIT_TARGET_ALL,
+                              			  DOTA_UNIT_TARGET_FLAG_NONE,
+                              			  FIND_ANY_ORDER,
+                              			  false)
+          for k,v in pairs(aroundit) do
+            local lable=v:GetContext("name")
+            if lable then
+              if lable=="yang" then
+              	v:ForceKill(true)
+              	createbaby(playerid)
+              end
+              if lable=="niu" then
+              	v:ForceKill(true)
+              	createbaby(playerid)
+              	createbaby(playerid)
+              end 	
+            end	
+          end
+          return 0.5
+        end,0)  
+   end
+end	
